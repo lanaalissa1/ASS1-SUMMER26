@@ -25,10 +25,11 @@ const STORAGE_KEY = "ssp_session_v1";
  * - use regex, not DOM APIs
  */
 function sanitizeUsername(input) {
-  // TODO: implement
-  return "";
+  if (typeof input !== "string") {
+    return "";
+  }
 
-  
+  return input.replace(new RegExp("[^a-zA-Z0-9_-]", "g"), "_").slice(0, 20);
 }
 
 /**
@@ -40,7 +41,17 @@ function sanitizeUsername(input) {
  * - MUST use textContent (not innerHTML)
  */
 function renderNotifications(listEl, notifications) {
-  // TODO: implement
+  listEl.innerHTML = "";
+
+  if (!Array.isArray(notifications)) {
+    return;
+  }
+
+  for (const notification of notifications) {
+    const li = document.createElement("li");
+    li.textContent = notification;
+    listEl.appendChild(li);
+  }
 }
 
 /** -----------------------------
@@ -62,8 +73,37 @@ function renderNotifications(listEl, notifications) {
  *   - notifications: array of strings
  */
 function parseProfileJson(jsonText) {
-  // TODO: implement
-  return null;
+  try {
+    const profile = JSON.parse(jsonText);
+
+    if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+      return null;
+    }
+
+    if (typeof profile.displayName !== "string") {
+      return null;
+    }
+
+    if (typeof profile.role !== "string") {
+      return null;
+    }
+
+    if (!Array.isArray(profile.notifications)) {
+      return null;
+    }
+
+    if (!profile.notifications.every((n) => typeof n === "string")) {
+      return null;
+    }
+
+    if (!["user", "admin"].includes(profile.role)) {
+      return null;
+    }
+
+    return profile;
+  } catch (err) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -80,8 +120,18 @@ function parseProfileJson(jsonText) {
  * - Return parsed profile object or null
  */
 async function fetchUserProfile(url) {
-  // TODO: implement
-  return null;
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const jsonText = await response.text();
+    return parseProfileJson(jsonText);
+  } catch (err) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -99,7 +149,16 @@ async function fetchUserProfile(url) {
  * - Must NOT store notifications (assume those are dynamic)
  */
 function saveSessionToStorage(profile) {
-  // TODO: implement
+  if (!profile || typeof profile !== "object") {
+    return;
+  }
+
+  const safeProfile = {
+    displayName: profile.displayName,
+    role: profile.role,
+  };
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeProfile));
 }
 
 /**
@@ -109,8 +168,17 @@ function saveSessionToStorage(profile) {
  * - Return object { displayName, role } if valid
  */
 function loadSessionFromStorage() {
-  // TODO: implement
-  return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
 }
 
 /** -----------------------------
@@ -128,7 +196,14 @@ function loadSessionFromStorage() {
  * client-side logic can be manipulated; real authorization is server-side.
  */
 function computeAccessStatus(profile) {
-  // TODO: implement
+  if (!profile || typeof profile !== "object") {
+    return "DENIED";
+  }
+
+  if (profile.role === "admin") {
+    return "GRANTED";
+  }
+
   return "DENIED";
 }
 
@@ -175,10 +250,13 @@ function applyProfileToUI(profile) {
   setText("role", profile.role);
   setStatusText(computeAccessStatus(profile));
 
-  renderNotifications(document.getElementById("notifications"), profile.notifications);
+  renderNotifications(
+    document.getElementById("notifications"),
+    profile.notifications
+  );
   renderDebug({
     storedSession: loadSessionFromStorage(),
-    note: "UI updated from profile (client-side)."
+    note: "UI updated from profile (client-side).",
   });
 }
 
@@ -213,7 +291,7 @@ function initUI() {
       const profile = {
         displayName: safe || "UNDEFINED",
         role: "user",
-        notifications: ["Logged in locally (demo)."]
+        notifications: ["Logged in locally (demo)."],
       };
 
       saveSessionToStorage(profile);
@@ -250,7 +328,7 @@ function initUI() {
       const profile = {
         displayName: session.displayName,
         role: session.role,
-        notifications: ["Loaded from storage (no server validation)."]
+        notifications: ["Loaded from storage (no server validation)."],
       };
       applyProfileToUI(profile);
     });
@@ -287,5 +365,5 @@ module.exports = {
   saveSessionToStorage,
   loadSessionFromStorage,
   computeAccessStatus,
-  STORAGE_KEY
+  STORAGE_KEY,
 };
