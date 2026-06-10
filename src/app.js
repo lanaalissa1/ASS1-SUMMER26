@@ -233,9 +233,6 @@ function renderDebug(obj) {
   el.textContent = JSON.stringify(obj, null, 2);
 }
 
-/**
- * Apply a full profile to the UI safely.
- */
 function applyProfileToUI(profile) {
   if (!profile) {
     setText("displayName", "UNDEFINED");
@@ -308,7 +305,6 @@ function initUI() {
 
   if (loadProfileBtn) {
     loadProfileBtn.addEventListener("click", async () => {
-      // In a real app this would be a real endpoint.
       const profile = await fetchUserProfile("/mock/profile.json");
       if (profile) {
         saveSessionToStorage(profile);
@@ -324,7 +320,7 @@ function initUI() {
         applyProfileToUI(null);
         return;
       }
-      // Minimal profile reconstructed from storage
+
       const profile = {
         displayName: session.displayName,
         role: session.role,
@@ -342,11 +338,9 @@ function initUI() {
     });
   }
 
-  // Start in UNDEFINED state
   applyProfileToUI(null);
 }
 
-// Auto-run in the browser
 try {
   initUI();
 } catch (_) {
